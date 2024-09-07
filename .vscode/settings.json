@@ -1,0 +1,18 @@
+{
+  "jestrunner.jestCommand": "node --experimental-vm-modules --expose-gc node_modules/.bin/jest",
+  "jestrunner.debugOptions": {
+    "runtimeArgs": ["--experimental-vm-modules", "--expose-gc"]
+  },
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": false,
+  "[javascript]": {
+    "editor.formatOnSave": false
+  },
+  "[typescript]": {
+    "editor.formatOnSave": false
+  },
+  // Add other languages here as needed
+  "prettier.configPath": ".prettierrc.json",
+  "typescript.preferences.importModuleSpecifier": "project-relative",
+  "typescript.preferences.importModuleSpecifierEnding": "minimal"
+}
