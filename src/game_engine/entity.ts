@@ -1,40 +1,53 @@
-import { IComponent } from './icomponent';
+import { Component } from './component';
+import { ComponentFactory } from './component_factory';
+import { IReusableIdentity } from './ireusable_identity';
+import { ReusableFactory } from './reusable_factory';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ExtractComponentType<T extends ReusableFactory<any>> = T extends ReusableFactory<
+  infer U
+>
+  ? U
+  : never;
 
 export interface EntityDelegate {
-  componentAdded(entity: Entity, component: IComponent): void;
-  componentRemoved(entity: Entity, component: IComponent): void;
+  componentAdded(entity: Entity, component: Component): void;
+  componentRemoved(entity: Entity, component: Component): void;
 }
 
-export class Entity {
-  private static _totalEntityCount = 0;
-  private static _availablePool: Entity[];
-
-  readonly id: number;
-  readonly components: IComponent[];
-
-  private _type: string;
+export class Entity implements IReusableIdentity {
   private _delegate: EntityDelegate | null;
   private _componentTypes: Record<string, number>;
+  private _componentFactory: ComponentFactory;
 
-  get type() {
-    return this._type;
-  }
+  readonly id: number;
+  readonly components: Component[];
 
-  // We make this private so that we can control the id's of the entities.
-  // The ids will be used with the gpus and other systems to track entity data.
-  private constructor(id: number, type: string) {
+  type: string;
+
+  constructor(id: number, componentFactory: ComponentFactory, type = '') {
     this.id = id;
-    this._type = type;
+    this.type = type;
     this.components = [];
     this._componentTypes = {};
     this._delegate = null;
+    this._componentFactory = componentFactory;
   }
 
   setDelegate(delegate: EntityDelegate | null) {
     this._delegate = delegate;
   }
 
-  addComponent(component: IComponent) {
+  spawnComponent<K extends keyof ComponentFactory>(
+    type: K
+  ): ExtractComponentType<ComponentFactory[K]> {
+    const factory = this._componentFactory[type];
+
+    if (factory == null) {
+      throw new Error('Cannot find factory.');
+    }
+
+    const component = factory.create();
     const hasType = this._componentTypes[component.type] != null;
 
     if (hasType) {
@@ -46,9 +59,11 @@ export class Entity {
     this.components.push(component);
 
     this._delegate && this._delegate.componentAdded(this, component);
+
+    return component as ExtractComponentType<ComponentFactory[K]>;
   }
 
-  removeComponent(component: IComponent) {
+  destroyComponent(component: Component) {
     const index = this.components.indexOf(component);
     const hasComponent = index > -1;
 
@@ -57,54 +72,48 @@ export class Entity {
     }
 
     this._componentTypes[component.type] -= 1;
-
     this.components.splice(index, 1);
     this._delegate && this._delegate.componentRemoved(this, component);
   }
 
-  getComponentsByType<T>(type: string) {
-    return this.components.filter(c => c.type === type) as T[];
+  getComponentsByType<K extends keyof ComponentFactory>(
+    type: K
+  ): ExtractComponentType<ComponentFactory[K]>[] {
+    return this.components.filter(c => c.type === type) as ExtractComponentType<
+      ComponentFactory[K]
+    >[];
   }
 
-  getComponentByType<T>(type: string) {
-    return this.getComponentsByType(type)[0] as T;
+  getComponentByType<K extends keyof ComponentFactory>(
+    type: K
+  ): ExtractComponentType<ComponentFactory[K]> {
+    return this.getComponentsByType(type)[0] as ExtractComponentType<ComponentFactory[K]>;
   }
 
-  hasComponent(type: string) {
+  hasComponent<K extends keyof ComponentFactory>(type: K) {
     return this.hasComponents([type]);
   }
 
-  hasComponents(types: string[]) {
+  hasComponents<K extends keyof ComponentFactory>(types: K[]) {
     const amount = types.length;
     let count = 0;
 
     for (let i = 0; i < amount; i++) {
-      count += this._componentTypes[types[i]] || 0;
+      count += Math.max(this._componentTypes[types[i]], 1) || 0;
     }
 
     return count >= amount;
   }
 
-  removeAllComponents() {
-    this.components.length = 0;
-    this._componentTypes = {};
-  }
-
-  static createInstance(type: string) {
-    if (Entity._availablePool.length > 0) {
-      const entity = Entity._availablePool.pop();
-      entity._type = type;
-      return entity;
+  destroyAllComponents() {
+    while (this.components.length > 0) {
+      this.destroyComponent(this.components.pop());
     }
-
-    const entity = new Entity(Entity._totalEntityCount++, type);
-    return entity;
   }
 
-  static destroyInstance(entity: Entity) {
-    entity.removeAllComponents();
-    entity._delegate = null;
-
-    this._availablePool.push(entity);
+  reset() {
+    this.type = '';
+    this._delegate = null;
+    this.destroyAllComponents();
   }
 }

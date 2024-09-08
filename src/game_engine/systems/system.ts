@@ -1,6 +1,6 @@
 import { Entity } from '../entity';
 import { GamePhase } from '../game_phase';
-import { IComponent } from '../icomponent';
+import { Component } from '../component';
 import { ISystem } from '../isystem';
 import { World } from '../world';
 
@@ -39,11 +39,11 @@ export abstract class System implements ISystem {
     // Do Nothing
   }
 
-  componentAdded(_entity: Entity, _component: IComponent): void {
+  componentAdded(_entity: Entity, _component: Component): void {
     // Do Nothing
   }
 
-  componentRemoved(_entity: Entity, _component: IComponent): void {
+  componentRemoved(_entity: Entity, _component: Component): void {
     // Do Nothing
   }
 

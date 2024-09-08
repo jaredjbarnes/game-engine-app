@@ -1,4 +1,4 @@
-import { IComponent } from './icomponent';
+import { Component } from './component';
 import { Entity } from './entity';
 import { World } from './world';
 import { GamePhase } from './game_phase';
@@ -16,8 +16,8 @@ export interface ISystem {
   entityAdded(entity: Entity): void;
   entityRemoved(entity: Entity): void;
 
-  componentAdded(entity: Entity, component: IComponent): void;
-  componentRemoved(entity: Entity, component: IComponent): void;
+  componentAdded(entity: Entity, component: Component): void;
+  componentRemoved(entity: Entity, component: Component): void;
 
   start(time: number): void;
   stop(time: number): void;

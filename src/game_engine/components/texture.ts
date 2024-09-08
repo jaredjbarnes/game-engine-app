@@ -1,4 +1,4 @@
-import { IComponent } from '../icomponent';
+import { Component } from '../component';
 
 export interface IFrame {
   x: number;
@@ -7,23 +7,25 @@ export interface IFrame {
   height: number;
 }
 
-export class Texture implements IComponent {
-  readonly type = 'texture';
-  url: string;
+export class Texture extends Component {
+  url = '';
   frame: IFrame = {
     x: 0,
     y: 0,
     width: 0,
     height: 0,
   };
-  isVisible: boolean;
+  isVisible = false;
 
-  constructor(url: string, x = 0, y = 0, width = 0, height = 0) {
-    this.url = url;
-    this.frame.x = x;
-    this.frame.y = y;
-    this.frame.width = width;
-    this.frame.height = height;
-    this.isVisible = false;
+  constructor(id: number) {
+    super(id, 'texture');
+  }
+
+  reset() {
+    this.url = '';
+    this.frame.x = 0;
+    this.frame.y = 0;
+    this.frame.width = 0;
+    this.frame.height = 0;
   }
 }

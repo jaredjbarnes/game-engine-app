@@ -1,7 +1,5 @@
 import { Application, Assets, Sprite as PixiSprite } from 'pixi.js';
 import { Entity } from '../entity';
-import { Texture } from '../components/texture';
-import { Transform } from '../components/transform';
 import { System } from './system';
 
 export class RenderSystem extends System {
@@ -27,8 +25,8 @@ export class RenderSystem extends System {
       return;
     }
 
-    const sprite = entity.getComponentByType('texture') as Texture;
-    const transform = entity.getComponentByType('transform') as Transform;
+    const sprite = entity.getComponentByType('texture');
+    const transform = entity.getComponentByType('transform');
 
     this._loadingSprites[entity.id] = Assets.load(sprite.url).then(texture => {
       const shouldAdd = this._loadingSprites[entity.id];
@@ -49,7 +47,7 @@ export class RenderSystem extends System {
   }
 
   private _isMatch(entity: Entity) {
-    return entity.hasComponents(['transform', 'sprite']);
+    return entity.hasComponents(['transform', 'texture']);
   }
 
   private _shouldAdd(entity: Entity) {

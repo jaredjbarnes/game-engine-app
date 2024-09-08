@@ -1,13 +1,16 @@
-import { IComponent } from '../icomponent';
+import { Component } from '../component';
 import { IFrame } from './texture';
 
-export class SpriteSheet implements IComponent {
-  readonly type = 'sprite-sheet';
-  url: string;
-  frames: IFrame[];
+export class SpriteSheet extends Component {
+  url = '';
+  frames: IFrame[] = [];
 
-  constructor(url: string, frames: IFrame[] = []) {
-    this.url = url;
-    this.frames = frames;
+  constructor(id: number) {
+    super(id, 'sprite-sheet');
+  }
+
+  reset() {
+    this.url = '';
+    this.frames.length = 0;
   }
 }

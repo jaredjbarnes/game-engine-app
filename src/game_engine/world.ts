@@ -1,8 +1,9 @@
 import { Clock } from './clock';
-import { WorldBoundaries } from './components/world_boundaries';
 import { Entity, EntityDelegate } from './entity';
-import { IComponent } from './icomponent';
+import { Component } from './component';
 import { ISystem } from './isystem';
+import { ReusableFactory } from './reusable_factory';
+import { ComponentFactory } from './component_factory';
 
 function sortSystems(systemA: ISystem, systemB: ISystem) {
   const aIndex = systemA.getOrdinal();
@@ -22,22 +23,27 @@ function sortSystems(systemA: ISystem, systemB: ISystem) {
 
 export class World {
   private _entityDelegate: EntityDelegate;
-  private _worldEntity: Entity;
-  readonly clock: Clock;
-  readonly systems: ISystem[];
-  readonly entites: Entity[];
+  private _entityFactory: ReusableFactory<Entity>;
+  private _systems: ISystem[];
+  private _entites: Entity[];
+  private _componentFactory = new ComponentFactory();
 
-  constructor(top?: number, right?: number, bottom?: number, left?: number) {
-    
+  readonly clock: Clock;
+
+  constructor() {
+    this._entityFactory = new ReusableFactory((id: number) => {
+      return new Entity(id, this._componentFactory);
+    });
+
     this.clock = new Clock(time => {
       this.update(time);
     });
 
-    this.systems = [];
-    this.entites = [];
+    this._systems = [];
+    this._entites = [];
 
     this._entityDelegate = {
-      componentAdded: function (entity: Entity, component: IComponent) {
+      componentAdded: function (entity: Entity, component: Component) {
         const amount = this.systems.length;
         const systems = this.systems;
 
@@ -45,7 +51,7 @@ export class World {
           systems[i].componentAdded(entity, component);
         }
       },
-      componentRemoved: function (entity: Entity, component: IComponent) {
+      componentRemoved: function (entity: Entity, component: Component) {
         const amount = this.systems.length;
         const systems = this.systems;
 
@@ -54,17 +60,13 @@ export class World {
         }
       },
     };
-
-    this._worldEntity = Entity.createInstance('world');
-    this._worldEntity.addComponent(new WorldBoundaries(top, right, bottom, left));
-    this.addEntity(this._worldEntity);
   }
 
   start() {
     const time = this.clock.start();
 
-    const amount = this.systems.length;
-    const systems = this.systems;
+    const amount = this._systems.length;
+    const systems = this._systems;
 
     for (let i = 0; i < amount; i++) {
       systems[i].start(time);
@@ -74,8 +76,8 @@ export class World {
   stop() {
     const time = this.clock.stop();
 
-    const amount = this.systems.length;
-    const systems = this.systems;
+    const amount = this._systems.length;
+    const systems = this._systems;
 
     for (let i = 0; i < amount; i++) {
       systems[i].stop(time);
@@ -83,73 +85,77 @@ export class World {
   }
 
   addSystem(system: ISystem) {
-    const index = this.systems.indexOf(system);
+    const index = this._systems.indexOf(system);
     const alreadyHasSystem = index > -1;
 
     if (alreadyHasSystem) {
       throw new Error('System has already been added.');
     }
 
-    this.systems.push(system);
+    this._systems.push(system);
     system.activated(this);
 
-    const amount = this.systems.length;
-    const systems = this.systems;
+    const amount = this._systems.length;
+    const systems = this._systems;
 
     for (let i = 0; i < amount; i++) {
       systems[i].systemAdded(system);
     }
 
-    this.systems.sort(sortSystems);
+    this._systems.sort(sortSystems);
   }
 
   removeSystem(system: ISystem) {
-    const index = this.systems.indexOf(system);
+    const index = this._systems.indexOf(system);
     const doesNotHaveSystem = index === -1;
 
     if (doesNotHaveSystem) {
       throw new Error('Cannot find system to remove.');
     }
 
-    this.systems.splice(index, 1);
+    this._systems.splice(index, 1);
     system.deactivated(this);
 
-    const amount = this.systems.length;
-    const systems = this.systems;
+    const amount = this._systems.length;
+    const systems = this._systems;
 
     for (let i = 0; i < amount; i++) {
       systems[i].systemRemove(system);
     }
   }
 
-  addEntity(entity: Entity) {
-    // In order to keep this fast we do not check if the entity added is already added.
-    this.entites.push(entity);
+  spawnEntity(type: string) {
+    const entity = this._entityFactory.create();
+    entity.type = type;
+
+    this._entites.push(entity);
     entity.setDelegate(this._entityDelegate);
 
-    const amount = this.systems.length;
-    const systems = this.systems;
+    const amount = this._systems.length;
+    const systems = this._systems;
 
     for (let i = 0; i < amount; i++) {
       systems[i].entityAdded(entity);
     }
+
+    return entity;
   }
 
-  removeEntity(entity: Entity) {
-    const index = this.entites.indexOf(entity);
+  destroyEntity(entity: Entity) {
+    const index = this._entites.indexOf(entity);
     const doesNotHaveEntity = index === -1;
 
     if (doesNotHaveEntity) {
       throw new Error('Does not have entity.');
     }
 
-    this.entites.splice(index, 1);
-    entity.setDelegate(null);
+    this._entites.splice(index, 1);
+    this._entityFactory.release(entity);
   }
 
   update(time: number) {
-    const amount = this.systems.length;
-    const systems = this.systems;
+    const amount = this._systems.length;
+    const systems = this._systems;
 
     for (let i = 0; i < amount; i++) {
       systems[i].beforeUpdate(time);
